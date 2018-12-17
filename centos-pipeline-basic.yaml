@@ -1,0 +1,52 @@
+kind: "BuildConfig"
+apiVersion: "v1"
+metadata:
+  name: "centos-ansible-testing-pipeline"
+spec:
+  strategy:
+    jenkinsPipelineStrategy:
+      jenkinsfile: |-
+        // path of the template to use
+        def templatePath = 'https://raw.githubusercontent.com/leifmadsen/jenkshift/master/openshift/templates/centos-ansible-testing.json'
+        // name of the template that will be created
+        def templateName = 'centos-ansible-testing'
+        // NOTE, the "pipeline" directive/closure from the declarative pipeline syntax needs to include, or be nested outside,
+        // and "openshift" directive/closure from the OpenShift Client Plugin for Jenkins.  Otherwise, the declarative pipeline engine
+        // will not be fully engaged.
+        pipeline {
+            agent {
+              node {
+                label 'base-centos7'
+              }
+            }
+            options {
+                // set a timeout of 20 minutes for this pipeline
+                timeout(time: 20, unit: 'MINUTES')
+            }
+
+            stages {
+                stage('preamble') {
+                    steps {
+                        script {
+                            openshift.withCluster() {
+                                openshift.withProject() {
+                                    echo "Using project: ${openshift.project()}"
+                                }
+                            }
+                        }
+                    }
+                }
+                stage('setup ansible') {
+                    steps {
+                        script {
+                            openshift.withCluster() {
+                                openshift.withProject() {
+                                    sh "yum install ansible -y"
+                                }
+                            }
+                        }
+                    }
+                }
+            } // stages
+        } // pipeline
+      type: JenkinsPipeline
