@@ -1,7 +1,7 @@
 kind: "BuildConfig"
 apiVersion: "v1"
 metadata:
-  name: "openshift-deployment-pipeline"
+  name: "centos-ansible-testing-pipeline"
 spec:
   strategy:
     jenkinsPipelineStrategy:
@@ -16,7 +16,7 @@ spec:
         pipeline {
             agent {
               node {
-                label 'ansible'
+                label 'centos'
               }
             }
             options {
