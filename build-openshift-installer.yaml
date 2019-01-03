@@ -1,24 +1,21 @@
-# vim: set ft=yaml ts=2 sw=2 tw=0 et:
+# vim: set ft=yaml ts=4 sw=4 tw=0 et:
 kind: "BuildConfig"
 apiVersion: "v1"
 metadata:
-  name: "centos-ansible-testing-pipeline"
+  name: "build-openshift-installer"
 spec:
-  source:
-    git:
-      uri: "https://github.com/openshift/installer"
   strategy:
     jenkinsPipelineStrategy:
       jenkinsfile: |-
         // name of the template that will be created
-        def templateName = 'centos-ansible-testing'
+        def templateName = 'build-openshift-installer'
         // NOTE, the "pipeline" directive/closure from the declarative pipeline syntax needs to include, or be nested outside,
         // and "openshift" directive/closure from the OpenShift Client Plugin for Jenkins.  Otherwise, the declarative pipeline engine
         // will not be fully engaged.
         pipeline {
             agent {
               node {
-                label 'jenkins-agent-ansible-274-centos7'
+                label 'openshift-install-builder'
               }
             }
             options {
@@ -37,18 +34,35 @@ spec:
                             }
                         }
                     }
-                }
-                stage('check ansible version') {
+                } // stage preamble
+                stage('setup') {
                     steps {
                         script {
                             openshift.withCluster() {
                                 openshift.withProject() {
-                                    sh "ansible --version"
+                                    sh "mkdir -p /go/src/github.com/openshift/installer"
+                                    sh "git clone https://github.com/openshift/installer /go/src/github.com/openshift/installer/"
+                                    //sh "cp -R /go/src/github.com/openshift/installer/vendor/* /go/src/"
                                 }
                             }
                         }
                     }
-                }
+                } // stage setup
+                stage('build') {
+                    steps {
+                        script {
+                            openshift.withCluster() {
+                                openshift.withProject() {
+                                    //sh "go generate github.com/openshift/installer/data"
+                                    //sh "CGO_ENABLED=1 go build -ldflags ' -X main.version=v0.2.0' -tags ' release' -o /go/bin/openshift-install github.com/openshift/installer/cmd/openshift-install"
+                                    dir("/go/src/github.com/openshift/installer") {
+                                        sh "hack/build.sh"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }  // stage build
             } // stages
         } // pipeline
       type: JenkinsPipeline
