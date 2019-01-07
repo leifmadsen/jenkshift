@@ -56,7 +56,7 @@ spec:
                                     //sh "go generate github.com/openshift/installer/data"
                                     //sh "CGO_ENABLED=1 go build -ldflags ' -X main.version=v0.2.0' -tags ' release' -o /go/bin/openshift-install github.com/openshift/installer/cmd/openshift-install"
                                     dir("/go/src/github.com/openshift/installer") {
-                                        sh "hack/build.sh"
+                                        sh "TAGS=libirt hack/build.sh"
                                     }
                                 }
                             }
