@@ -1,0 +1,4 @@
+ovirt/vars/rhsub.vars
+ovirt/vars/engine.yml
+ovirt/vars/virthost.yml
+ovirt/roles/*
