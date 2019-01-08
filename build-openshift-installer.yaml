@@ -22,6 +22,10 @@ spec:
                 // set a timeout of 20 minutes for this pipeline
                 timeout(time: 20, unit: 'MINUTES')
             }
+            environment {
+                TECTONIC_SECRET = credentials('PULL_SECRET')
+                SSH_PUBLIC_KEY = credentials('ssh-public-key')
+            }
 
             stages {
                 stage('preamble') {
@@ -40,9 +44,9 @@ spec:
                         script {
                             openshift.withCluster() {
                                 openshift.withProject() {
-                                    sh "mkdir -p /go/src/github.com/openshift/installer"
-                                    sh "git clone https://github.com/openshift/installer /go/src/github.com/openshift/installer/"
-                                    //sh "cp -R /go/src/github.com/openshift/installer/vendor/* /go/src/"
+                                    dir("/go/src/github.com/openshift/installer") {
+                                        git 'https://github.com/openshift/installer'
+                                    }
                                 }
                             }
                         }
@@ -53,8 +57,6 @@ spec:
                         script {
                             openshift.withCluster() {
                                 openshift.withProject() {
-                                    //sh "go generate github.com/openshift/installer/data"
-                                    //sh "CGO_ENABLED=1 go build -ldflags ' -X main.version=v0.2.0' -tags ' release' -o /go/bin/openshift-install github.com/openshift/installer/cmd/openshift-install"
                                     dir("/go/src/github.com/openshift/installer") {
                                         sh "TAGS=libirt hack/build.sh"
                                     }
@@ -63,6 +65,24 @@ spec:
                         }
                     }
                 }  // stage build
+                stage('generate manifests') {
+                    steps {
+                        script {
+                            openshift.withCluster() {
+                                openshift.withProject() {
+                                    dir("/go/src/github.com/openshift/installer") {
+                                        sh 'mkdir manifests ignition_config'
+                                        configFileProvider([configFile(fileId: 'install-config-yaml-nfvpe-17', targetLocation: 'manifests/install-config.yaml')]) {}
+                                        configFileProvider([configFile(fileId: 'install-config-yaml-nfvpe-17', targetLocation: 'ignition_config/install-config.yaml')]) {}
+
+                                        sh './bin/openshift-install create ignition-configs --dir ./ignition_config'
+                                        sh './bin/openshift-install create manifests --dir ./manifests'
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             } // stages
         } // pipeline
       type: JenkinsPipeline
