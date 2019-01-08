@@ -58,7 +58,7 @@ spec:
                             openshift.withCluster() {
                                 openshift.withProject() {
                                     dir("/go/src/github.com/openshift/installer") {
-                                        sh "TAGS=libirt hack/build.sh"
+                                        sh "TAGS=libvirt hack/build.sh"
                                     }
                                 }
                             }
