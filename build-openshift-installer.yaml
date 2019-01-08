@@ -22,10 +22,6 @@ spec:
                 // set a timeout of 20 minutes for this pipeline
                 timeout(time: 20, unit: 'MINUTES')
             }
-            environment {
-                TECTONIC_SECRET = credentials('PULL_SECRET')
-                SSH_PUBLIC_KEY = credentials('ssh-public-key')
-            }
 
             stages {
                 stage('preamble') {
@@ -72,9 +68,8 @@ spec:
                                 openshift.withProject() {
                                     dir("/go/src/github.com/openshift/installer") {
                                         sh 'mkdir manifests ignition_config'
-                                        configFileProvider([configFile(fileId: 'install-config-yaml-nfvpe-17', targetLocation: 'manifests/install-config.yaml')]) {}
-                                        configFileProvider([configFile(fileId: 'install-config-yaml-nfvpe-17', targetLocation: 'ignition_config/install-config.yaml')]) {}
-
+                                        configFileProvider([configFile(fileId: 'install-config-nfvpe-17', targetLocation: 'manifests/install-config.yaml')]) {}
+                                        configFileProvider([configFile(fileId: 'install-config-nfvpe-17', targetLocation: 'ignition_config/install-config.yaml')]) {}
                                         sh './bin/openshift-install create ignition-configs --dir ./ignition_config'
                                         sh './bin/openshift-install create manifests --dir ./manifests'
                                     }
