@@ -39,7 +39,7 @@ the console page at https://console.nfvpe-18.nfvpe.site:8443.
 
 ## Setup Jenkins
 
-    oc new-app --env VOLUME_CAPACITY=4Gi jenkins-persistent
+    oc new-app --param=MEMORY_LIMIT=2048Mi --param=VOLUME_CAPACITY=4Gi jenkins-persistent
 
 This part will take a while. You'll want to monitor progress via the GUI
 probably.
