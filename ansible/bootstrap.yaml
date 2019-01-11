@@ -75,9 +75,6 @@
       command: firewall-cmd --get-default-zone
       register: firewalld_default_zone
 
-    - debug:
-        var: firewalld_default_zone
-
     - name: Add source network 192.168.126.0/24
       command: firewall-cmd --zone={{ firewalld_default_zone.stdout }} --add-source=192.168.126.0/24
 
@@ -102,7 +99,7 @@
 
         - name: Start default libvirt storage pool
           virt_pool:
-            command: active
+            command: start
             name: default
 
         - name: Autostart default libvirt storage pool
@@ -140,7 +137,9 @@
         mode: 0700
 
     - name: Make sure we have a public/private keypair setup
-      command: ssh-keygen -q -t rsa -f {{ ansible_env.HOME }}/.ssh/testing_generation -C "" -N ""
+      command: ssh-keygen -q -t rsa -f {{ ansible_env.HOME }}/.ssh/id_rsa -C "" -N ""
+      args:
+        creates: "{{ ansible_env.HOME }}/.ssh/id_rsa"
 
   handlers:
     - name: restart_libvirtd
