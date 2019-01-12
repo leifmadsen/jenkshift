@@ -13,20 +13,31 @@
     openshift_base_domain: tt.testing
 
   tasks:
+    - name: Update system to latest packages before starting (will reboot if changes happen)
+      yum:
+        name: '*'
+        state: latest
+      register: yum_upgrade
+
+    - name: Rebooting system if packages were updated
+      reboot:
+      when: yum_upgrade.changed
+
     - name: Install dependencies
       package:
         name: "{{ packages }}"
         state: present
       vars:
         packages:
+          - compat-openssl10
           - libvirt
           - libvirt-devel
           - libvirt-daemon-kvm
-          - qemu-kvm
           - NetworkManager
           - python3-firewall
           - python3-libvirt
           - python3-lxml
+          - qemu-kvm
 
     - name: Enable libvirtd
       systemd:
