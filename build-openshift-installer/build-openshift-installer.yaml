@@ -1,0 +1,82 @@
+# vim: set ft=yaml ts=4 sw=4 tw=0 et:
+kind: "BuildConfig"
+apiVersion: "v1"
+metadata:
+  name: "build-openshift-installer"
+spec:
+  strategy:
+    jenkinsPipelineStrategy:
+      jenkinsfile: |-
+        // name of the template that will be created
+        def templateName = 'build-openshift-installer'
+        // NOTE, the "pipeline" directive/closure from the declarative pipeline syntax needs to include, or be nested outside,
+        // and "openshift" directive/closure from the OpenShift Client Plugin for Jenkins.  Otherwise, the declarative pipeline engine
+        // will not be fully engaged.
+        pipeline {
+            agent {
+                node {
+                    label 'openshift-install-builder'
+                }
+            }
+            options {
+                // set a timeout of 20 minutes for this pipeline
+                timeout(time: 20, unit: 'MINUTES')
+            }
+            stage('preamble') {
+                steps {
+                    script {
+                        openshift.withCluster() {
+                            openshift.withProject() {
+                                echo "Using project: ${openshift.project()}"
+                            }
+                        }
+                    }
+                }
+            } // stage preamble
+            stage('setup') {
+                steps {
+                    script {
+                        openshift.withCluster() {
+                            openshift.withProject() {
+                                dir("/go/src/github.com/openshift/installer") {
+                                    git 'https://github.com/openshift/installer'
+                                }
+                            }
+                        }
+                    }
+                }
+            } // stage setup
+            stage('build') {
+                steps {
+                    script {
+                        openshift.withCluster() {
+                            openshift.withProject() {
+                                dir("/go/src/github.com/openshift/installer") {
+                                    sh "TAGS=libvirt hack/build.sh"
+                                }
+                            }
+                        }
+                    }
+                }
+            }  // stage build
+            stage('generate manifests') {
+                steps {
+                    script {
+                        openshift.withCluster() {
+                            openshift.withProject() {
+                                dir("/go/src/github.com/openshift/installer") {
+                                    sh 'mkdir manifests ignition_config'
+                                    configFileProvider([configFile(fileId: 'install-config-nfvpe-17', targetLocation: 'manifests/install-config.yaml')]) {}
+                                    configFileProvider([configFile(fileId: 'install-config-nfvpe-17', targetLocation: 'ignition_config/install-config.yaml')]) {}
+                                    sh './bin/openshift-install create ignition-configs --dir ./ignition_config'
+                                    sh './bin/openshift-install create manifests --dir ./manifests'
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } // stages
+    } // pipeline
+      type: JenkinsPipeline
+

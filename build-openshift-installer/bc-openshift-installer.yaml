@@ -1,0 +1,17 @@
+kind: "BuildConfig"
+apiVersion: "v1"
+metadata:
+  name: "build-openshift-install-dockerfile"
+spec:
+  runPolicy: "Serial"
+  source:
+    git:
+      uri: "https://github.com/openshift/installer"
+  strategy:
+    dockerStrategy:
+      dockerfilePath: images/installer/Dockerfile.ci
+  output:
+    to:
+      kind: "ImageStreamTag"
+      name: "openshift-installer:v4"
+
