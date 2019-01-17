@@ -7,9 +7,26 @@ spec:
   source:
     git:
       uri: "https://github.com/openshift/installer"
+    dockerfile: |-
+        FROM fedora:29 AS builder
+        RUN dnf install gcc-c++ libvirt-devel openssl-devel golang -y && dnf clean all
+        WORKDIR /go/src/github.com/openshift/installer
+        ENV GOPATH /go
+        COPY . .
+        RUN TAGS=libvirt hack/build.sh
+
+
+        FROM registry.svc.ci.openshift.org/openshift/origin-v4.0:base
+        COPY --from=builder /go/src/github.com/openshift/installer/bin/openshift-install /bin/openshift-install
+        RUN mkdir /output && chown 1000:1000 /output
+        USER 1000:1000
+        ENV PATH /bin
+        ENV HOME /output
+        WORKDIR /output
+        ENTRYPOINT ["/bin/openshift-install"]
   strategy:
     dockerStrategy:
-      dockerfilePath: images/installer/Dockerfile.ci
+
   output:
     to:
       kind: "ImageStreamTag"

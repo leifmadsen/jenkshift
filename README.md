@@ -50,15 +50,23 @@ For your jobs as specified by the `Jenkinsfile` in the root of this
 directory, you may need to add some environment variables to Jenkins to pass
 via `credentials` or via the _Config Files_ module.
 
+## Create ImageStreams
+
+    oc create imagestream openshift-installer:v4
+
+## Import BuildConfig for _openshift-installer_
+
+    oc apply -f build-openshift-installer/bc-openshift-installer.yaml
+
 ## Import Job
 
 Import your job with something like:
 
-    oc apply -f build-openshift-installer.yml
+    oc apply -f build-openshift-installer/Jenkinsfile
 
 # Day Two Operations
 
-# Building new image
+## Building new worker images
 
 Create a new `Dockerfile` and use `FROM openshift/jenkins-slave-base-centos7`
 and then customize it how you wish. You'll need to make sure you import it as
