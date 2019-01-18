@@ -1,0 +1,178 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+labels:
+  template: nginx-artifacts
+message: |-
+  The following service(s) have been created in your project: ${NAME}.
+
+  For more information about using this template see https://github.com/leifmadsen/jenkshift/README.md.
+metadata:
+  annotations:
+    description: Nginx application to make it easier to provide a path for artifacts generated from
+      another container image to be published and made available outside of the cluster, or for other
+      applications.
+    iconClass: icon-nginx
+    openshift.io/display-name: Nginx artifact server
+    openshift.io/documentation-url: https://github.com/leifmadsen/jenkshift
+    openshift.io/long-description: This template creates an nginx application along with an artifacts
+      PersistentVolumeClaim that will result in a place to publish artifacts for serving to other applications.
+    openshift.io/provider-display-name: NFVPE @ Red Hat, Inc.
+    openshift.io/support-url: https://github.com/leifmadsen/jenkshift/issues
+    tags: quickstart,nginx
+  creationTimestamp: 2019-01-17T17:25:29Z
+  name: nginx-artifacts
+  namespace: openshift
+objects:
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      description: Exposes and load balances the application pods
+    name: ${NAME}
+  spec:
+    ports:
+    - name: web
+      port: 80
+      targetPort: 8080
+    selector:
+      name: ${NAME}
+- apiVersion: v1
+  kind: PersistentVolumeClaim
+  metadata:
+    name: ${NAME}
+  spec:
+    accessModes:
+    - ReadWriteMany
+    resources:
+      requests:
+        storage: ${VOLUME_CAPACITY}
+- apiVersion: v1
+  kind: Route
+  metadata:
+    annotations:
+      template.openshift.io/expose-uri: http://{.spec.host}{.spec.path}
+    name: '${NAME}'
+  spec:
+    host: ${APPLICATION_DOMAIN}
+    to:
+      kind: Service
+      name: ${NAME}
+
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    annotations:
+      template.alpha.openshift.io/wait-for-ready: "true"
+    name: ${NAME}
+  spec:
+    replicas: 1
+    selector:
+      name: ${NAME}
+    strategy:
+      type: Recreate
+    template:
+      metadata:
+        labels:
+          name: ${NAME}
+      spec:
+        containers:
+        - capabilities: {}
+          privileged: true
+          env: []
+          image: ' '
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 30
+            timeoutSeconds: 3
+          name: nginx
+          resources:
+            limits:
+              memory: ${MEMORY_LIMIT}
+          securityContext:
+            capabilities: {}
+            privileged: false
+          volumeMounts:
+          - mountPath: /usr/share/nginx/html/artifacts
+            name: ${NAME}-data
+            readOnly: true
+          - mountPath: /var/cache/nginx
+            name: var-cache-nginx
+          - mountPath: /var/run
+            name: var-run
+          - mountPath: /etc/nginx/conf.d
+            name: default-config
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        volumes:
+        - name: var-cache-nginx
+          emptyDir: {}
+        - name: var-run
+          emptyDir: {}
+        - name: ${NAME}-data
+          persistentVolumeClaim:
+            claimName: ${NAME}
+        - name: default-config
+          configMap:
+            name: nginx-default-conf
+            items:
+              - key: default.conf
+                path: default.conf
+    triggers:
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - nginx
+        from:
+          kind: ImageStreamTag
+          name: 'nginx:stable'
+          namespace: '${NAMESPACE}'
+        lastTriggeredImage: ''
+      type: ImageChange
+    - type: ConfigChange
+parameters:
+- description: image stream tag
+  name: NGINX_IMAGE_STREAM_TAG
+  required: true
+  value: nginx:stable
+- description: Image to use for nginx
+  name: NGINX_IMAGE
+  required: true
+  value: nginx
+- description: Name of the claim
+  name: CLAIM_NAME
+  required: true
+  value: nginx-artifacts
+- description: Name of the volume
+  name: VOLUME_NAME
+  required: true
+  value: artifacts
+- description: Volume capacity
+  name: VOLUME_CAPACITY
+  required: true
+  value: 1Gi
+- description: Location to mount the volume
+  name: VOLUME_MOUNT_PATH
+  required: true
+  value: /usr/share/nginx/html/artifacts
+- description: The name assigned to all of the frontend objects defined in this template.
+  displayName: Name
+  name: NAME
+  required: true
+  value: nginx-artifacts
+- description: The OpenShift Namespace where the ImageStream resides.
+  displayName: Namespace
+  name: NAMESPACE
+  required: true
+  value: openshift
+- description: Maximum amount of memory the container can use.
+  displayName: Memory Limit
+  name: MEMORY_LIMIT
+  required: true
+  value: 512Mi
+- description: The exposed hostname that will route to the nginx service, if left
+    blank a value will be defaulted.
+  displayName: Application Hostname
+  name: APPLICATION_DOMAIN
