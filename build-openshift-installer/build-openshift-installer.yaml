@@ -76,7 +76,6 @@ spec:
                     }
                 }
             }
-        } // stages
-    } // pipeline
-      type: JenkinsPipeline
+        } // pipeline
+    type: JenkinsPipeline
 
