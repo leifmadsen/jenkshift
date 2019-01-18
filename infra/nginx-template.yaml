@@ -57,7 +57,21 @@ objects:
     to:
       kind: Service
       name: ${NAME}
+- apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: nginx-default-conf
+  data:
+    default.conf: |-
+      server {
+         listen       8080;
+         server_name  localhost;
 
+         location / {
+             root   /usr/share/nginx/html/artifacts;
+             autoindex on;
+          }
+      }
 - apiVersion: v1
   kind: DeploymentConfig
   metadata:
