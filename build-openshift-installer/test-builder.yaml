@@ -1,0 +1,69 @@
+# vim: set ft=yaml ts=4 sw=4 tw=0 et:
+kind: "BuildConfig"
+apiVersion: "v1"
+metadata:
+  name: "get-version"
+spec:
+  strategy:
+    jenkinsPipelineStrategy:
+      jenkinsfile: |-
+        // name of the template that will be created
+        def templateName = 'get-version'
+        pipeline {
+            agent {
+                node {
+                    label 'openshift-install-builder'
+                }
+            }
+            options {
+                // set a timeout of 20 minutes for this pipeline
+                timeout(time: 20, unit: 'MINUTES')
+            }
+            stages {
+                stage('preamble') {
+                    steps {
+                        script {
+                            openshift.withCluster() {
+                                openshift.withProject() {
+                                    echo "Using project: ${openshift.project()}"
+                                }
+                            }
+                        }
+                    }
+                } // stage preamble
+                stage('create pod') {
+                    steps {
+                        script {
+                            openshift.withCluster() {
+                                openshift.withProject() {
+                                    def pod = [
+                                        "apiVersion": "v1",
+                                        "kind": "Pod",
+                                        "metadata": [
+                                            "name": "openshift-installer"
+                                        ],
+                                        "spec": [
+                                            "containers": [
+                                                ["image": "docker-registry.default.svc:5000/installer/openshift-installer:v4",
+                                                 "args": ["version"],
+                                                "imagePullPolicy": "Always",
+                                                "name": "openshift-installer"
+                                                ]
+                                            ],
+                                            "restartPolicy": "Never",
+                                            "serviceAccount": "default"
+                                        ]
+                                    ]
+
+                                    def objs = openshift.create( pod )
+
+                                    objs.describe()
+                                }
+                            }
+                        }
+                    }
+                } // stage create pod
+            } // end stages
+        } // pipeline
+    type: JenkinsPipeline
+

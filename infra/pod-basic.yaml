@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: openshift-installer
+spec:
+  containers:
+  - args: ["version"]
+    image: installer/openshift-installer:latest
+    imagePullPolicy: Always
+    name: openshift-installer
+  serviceAccount: default
