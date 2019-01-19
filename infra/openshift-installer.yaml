@@ -1,0 +1,119 @@
+# vim: set tabstop=2 shiftwidth=2 expandtab :
+---
+apiVersion: template.openshift.io/v1
+kind: Template
+labels:
+  template: openshift-installer
+message: |-
+  The following service(s) have been created in your project: ${NAME}.
+
+  For more information about using this template see https://github.com/leifmadsen/jenkshift/README.md.
+metadata:
+  annotations:
+    description: Execute a pod that runs openshift-install with a shared mount location.
+    iconClass: icon-openshift
+    openshift.io/display-name: openshift-install executor
+    openshift.io/documentation-url: https://github.com/leifmadsen/jenkshift
+    openshift.io/long-description: This template creates a pod where openshift-installer is executed from.
+    openshift.io/provider-display-name: NFVPE @ Red Hat, Inc.
+    openshift.io/support-url: https://github.com/leifmadsen/jenkshift/issues
+    tags: quickstart,openshift,installer
+  creationTimestamp: 2019-01-17T17:25:29Z
+  name: openshift-installer
+  namespace: openshift
+objects:
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    annotations:
+      template.alpha.openshift.io/wait-for-ready: "true"
+    name: ${NAME}
+  spec:
+    replicas: 1
+    selector:
+      name: ${NAME}
+    strategy:
+      type: Recreate
+    template:
+      metadata:
+        labels:
+          name: ${NAME}
+      spec:
+        containers:
+        - capabilities: {}
+          env: []
+          image: ' '
+          args:
+          - ${OPENSHIFT_INSTALLER_ARGS}
+          imagePullPolicy: IfNotPresent
+          name: openshift-installer
+          privileged: true
+          resources:
+            limits:
+              memory: ${MEMORY_LIMIT}
+          securityContext:
+            capabilities: {}
+            privileged: false
+          volumeMounts:
+          - mountPath: ${VOLUME_MOUNT_PATH}
+            name: ${VOLUME_NAME}
+            readOnly: false
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        volumes:
+        - name: ${VOLUME_NAME}
+          persistentVolumeClaim:
+            claimName: ${CLAIM_NAME}
+    triggers:
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - openshift-installer
+        from:
+          kind: ImageStreamTag
+          name: ${OPENSHIFT_INSTALLER_IMAGE_STREAM_TAG}
+          namespace: ${NAMESPACE}
+        lastTriggeredImage: ""
+      type: ImageChange
+    - type: ConfigChange
+
+parameters:
+- description: image stream tag
+  name: OPENSHIFT_INSTALLER_IMAGE_STREAM_TAG
+  required: true
+  value: openshift-installer:latest
+- description: Arguments for openshift-installer
+  name: OPENSHIFT_INSTALLER_ARGS
+  required: true
+  value: '["version"]'
+- description: Name of the claim
+  name: CLAIM_NAME
+  required: true
+  value: nginx-artifacts
+- description: Name of the volume
+  name: VOLUME_NAME
+  required: true
+  value: artifacts
+- description: Volume capacity
+  name: VOLUME_CAPACITY
+  required: true
+  value: 1Gi
+- description: Location to mount the volume
+  name: VOLUME_MOUNT_PATH
+  required: true
+  value: /artifacts
+- description: The name assigned to all of the frontend objects defined in this template.
+  displayName: Name
+  name: NAME
+  required: true
+  value: openshift-installer
+- description: The OpenShift Namespace where the ImageStream resides.
+  displayName: Namespace
+  name: NAMESPACE
+  required: true
+  value: openshift
+- description: Maximum amount of memory the container can use.
+  displayName: Memory Limit
+  name: MEMORY_LIMIT
+  required: true
+  value: 512Mi
