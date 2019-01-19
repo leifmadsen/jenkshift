@@ -45,7 +45,7 @@ spec:
                                         "spec": [
                                             "containers": [
                                                 ["image": "docker-registry.default.svc:5000/installer/openshift-installer:v4",
-                                                 "args": ["version"],
+                                                 "args": ["graph", "--log-level=debug"],
                                                 "imagePullPolicy": "Always",
                                                 "name": "openshift-installer"
                                                 ]
