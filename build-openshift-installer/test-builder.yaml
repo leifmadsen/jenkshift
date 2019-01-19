@@ -36,7 +36,7 @@ spec:
                         script {
                             openshift.withCluster() {
                                 openshift.withProject() {
-                                    def pod = [
+                                    def oi_pod = [
                                         "apiVersion": "v1",
                                         "kind": "Pod",
                                         "metadata": [
@@ -55,9 +55,28 @@ spec:
                                         ]
                                     ]
 
-                                    def objs = openshift.create( pod )
+                                    def objs = openshift.create( oi_pod )
+                                    def pod = objs.narrow('po')
 
-                                    objs.describe()
+                                    timeout(10) {
+                                        pod.watch {
+                                            echo "Waiting for pod to spin up"
+                                            return it.count() > 0
+                                        }
+                                        def result = pod.logs('-f')
+                                        def logsString = result.actions[0].out
+                                        def logsErr = result.actions[0].err
+
+
+                                        pod.untilEach(0) {
+                                            echo "Checking if pod has completed"
+                                            if ( it.object().status.phase == "Succeeded" ) {
+                                                echo "Deleting the pod"
+                                                pod.delete()
+                                                return true
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
