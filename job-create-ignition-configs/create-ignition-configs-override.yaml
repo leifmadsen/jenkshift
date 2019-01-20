@@ -4,6 +4,13 @@ apiVersion: "v1"
 metadata:
   name: "create-ignition-configs"
 spec:
+  triggers:
+    -
+      type: "imageChange"
+      imageChange:
+        from:
+          kind: "ImageStreamTag"
+          name: "openshift-installer:v4"
   strategy:
     jenkinsPipelineStrategy:
       jenkinsfile: |-
