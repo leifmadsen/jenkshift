@@ -18,8 +18,7 @@ spec:
 
         FROM registry.svc.ci.openshift.org/openshift/origin-v4.0:base
         COPY --from=builder /go/src/github.com/openshift/installer/bin/openshift-install /bin/openshift-install
-        RUN mkdir /output && chown 1000:1000 /output && yum install libvirt-libs -y
-        USER 1000:1000
+        RUN mkdir /output && yum install libvirt-libs -y
         ENV PATH /bin
         ENV HOME /output
         WORKDIR /output

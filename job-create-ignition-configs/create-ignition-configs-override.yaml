@@ -1,0 +1,129 @@
+# vim: set ft=yaml ts=4 sw=4 tw=0 et:
+kind: "BuildConfig"
+apiVersion: "v1"
+metadata:
+  name: "create-ignition-configs"
+spec:
+  strategy:
+    jenkinsPipelineStrategy:
+      jenkinsfile: |-
+        // name of the template that will be created
+        def templateName = 'create-ignition-configs'
+        pipeline {
+            agent {
+                node {
+                    label 'openshift-install-builder'
+                }
+            }
+            options {
+                // set a timeout of 20 minutes for this pipeline
+                timeout(time: 20, unit: 'MINUTES')
+            }
+            stages {
+                stage('preamble') {
+                    steps {
+                        script {
+                            openshift.withCluster() {
+                                openshift.withProject() {
+                                    echo "Using project: ${openshift.project()}"
+                                }
+                            }
+                        }
+                    }
+                } // stage preamble
+                stage('build ignition configs') {
+                    steps {
+                        script {
+                            openshift.withCluster() {
+                                openshift.withProject() {
+                                    def oi_pod = [
+                                        "apiVersion": "v1",
+                                        "kind": "Pod",
+                                        "metadata": [
+                                            "name": "openshift-installer"
+                                        ],
+                                        "spec": [
+                                            "containers": [
+                                                [
+                                                    "image": "docker-registry.default.svc:5000/${openshift.project()}/openshift-installer:v4",
+                                                    "args": ["-c", "ITSNOW=\$(date +%Y-%m-%d.%N) ; mkdir /usr/share/nginx/html/artifacts/\${ITSNOW} ; cat /install-config-data/install-config.yaml > /usr/share/nginx/html/artifacts/\${ITSNOW}/install-config.yaml ; /bin/openshift-install create ignition-configs --log-level=debug --dir=/usr/share/nginx/html/artifacts/\${ITSNOW}"],
+                                                    "command": ["/bin/bash"],
+                                                    "imagePullPolicy": "Always",
+                                                    "name": "openshift-installer",
+                                                    "volumeMounts": [
+                                                        [
+                                                            "mountPath": "/usr/share/nginx/html/artifacts",
+                                                            "name": "nginx-artifacts-data",
+                                                            "readOnly": false
+                                                        ],
+                                                        [
+                                                            "mountPath": "/install-config-data",
+                                                            "name": "install-config",
+                                                            "readOnly": false,
+                                                        ]
+                                                    ]
+                                                ]
+                                            ],
+                                            "dnsPolicy": "ClusterFirst",
+                                            "restartPolicy": "Never",
+                                            "volumes": [
+                                                [
+                                                    "name": "install-config",
+                                                    "configMap": [
+                                                        "name": "nfvpe-17-install-config",
+                                                        "items": [
+                                                            [
+                                                                "key": "install-config.yaml",
+                                                                "path": "install-config.yaml"
+                                                            ]
+                                                        ]
+                                                    ]
+                                                ],
+                                                [
+                                                    "name": "nginx-artifacts-data",
+                                                    "persistentVolumeClaim": [
+                                                        "claimName": "nginx-artifacts"
+                                                    ]
+                                                ]
+                                            ]
+                                        ] // end spec
+                                    ] // end oi_pod
+                                    def objs = openshift.create( oi_pod )
+                                    def pod = objs.narrow('po')
+
+                                    timeout(10) {
+                                        pod.watch {
+                                            echo "Waiting for pod to spin up"
+                                            return it.count() > 0
+                                        }
+                                        def result = pod.logs('-f')
+                                        def logsString = result.actions[0].out
+                                        def logsErr = result.actions[0].err
+
+
+                                        pod.untilEach(0) {
+                                            echo "Checking if pod has completed"
+                                            echo "${it.object().status.phase}"
+                                            if ( it.object().status.phase == "Succeeded" ) {
+                                                // TODO: make this smarted by causing test to pass
+                                                echo "Deleting the pod, everything succeeded"
+                                                pod.delete()
+                                                return true
+                                            }
+                                            if ( it.object().status.phase == "Failed" ) {
+                                                // TODO: make this smarter by failing the job
+                                                echo "Deleting the pod, things FAILED"
+                                                pod.delete()
+                                                return true
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } // stage create pod
+            } // end stages
+        } // pipeline
+    type: JenkinsPipeline
+
